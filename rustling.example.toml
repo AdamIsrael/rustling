@@ -1,0 +1,36 @@
+database_path = "rustling.db"
+lookback_hours = 24
+max_items_per_digest = 50
+
+[email]
+from = "digest@example.com"
+to = ["you@example.com"]
+subject_prefix = "Rustling Digest"
+
+[llm]
+provider = "claude"
+endpoint = "https://api.anthropic.com/v1/messages"
+model = "claude-sonnet-4-20250514"
+# prompt_template = "Custom prompt here..."
+
+# For Ollama (local):
+# [llm]
+# provider = "ollama"
+# endpoint = "http://localhost:11434/api/generate"
+# model = "llama3"
+
+# For OpenAI-compatible:
+# [llm]
+# provider = "openai_compat"
+# endpoint = "http://localhost:8080/v1/chat/completions"
+# model = "gpt-4"
+
+[[feeds]]
+name = "Hacker News"
+url = "https://hnrss.org/frontpage"
+category = "tech"
+
+[[feeds]]
+name = "Rust Blog"
+url = "https://blog.rust-lang.org/feed.xml"
+category = "rust"
