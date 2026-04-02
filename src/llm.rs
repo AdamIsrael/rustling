@@ -6,9 +6,11 @@ use crate::models::Item;
 
 const DEFAULT_PROMPT: &str = "\
 You are a news digest assistant. Summarize the following items into a concise, \
-well-organized digest. Group related items by topic. For each item, include the \
-title and a 1-2 sentence summary. Highlight the most important or notable items. \
-Keep the overall digest readable and scannable.";
+well-organized HTML digest. Group related items by topic using headings. For each \
+item, include the title as a link to the original URL and a 1-2 sentence summary. \
+Highlight the most important or notable items. Use clean, semantic HTML suitable \
+for email (h2 for topic headings, ul/li for items, a tags for links, p for summaries). \
+Do not include <html>, <head>, or <body> tags — just the inner content.";
 
 pub async fn summarize(
     client: &reqwest::Client,

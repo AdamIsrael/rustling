@@ -27,7 +27,7 @@ pub async fn send_digest(
         "subject": subject,
         "content": [
             {
-                "type": "text/plain",
+                "type": "text/html",
                 "value": &digest.summary,
             }
         ]
