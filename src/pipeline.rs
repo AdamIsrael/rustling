@@ -1,30 +1,39 @@
 use anyhow::{Context, Result};
 use tracing::{info, warn, error};
 
-use crate::config::{Config, Secrets};
+use crate::config::{Config, Keywords, Secrets};
 use crate::db::Database;
 use crate::email;
 use crate::llm;
 use crate::models::Item;
 use crate::source::Source;
 use crate::source::rss::RssFeed;
+use crate::source::searxng::SearxngSearch;
 
 pub async fn run(config: &Config, secrets: &Secrets) -> Result<()> {
     let db = Database::open(&config.database_path)?;
     let client = reqwest::Client::new();
 
     // Build sources from config
-    let sources: Vec<Box<dyn Source>> = config
-        .feeds
-        .iter()
-        .map(|f| {
-            Box::new(RssFeed {
-                name: f.name.clone(),
-                url: f.url.clone(),
-                category: f.category.clone(),
-            }) as Box<dyn Source>
-        })
-        .collect();
+    let mut sources: Vec<Box<dyn Source>> = Vec::new();
+
+    for f in &config.feeds {
+        sources.push(Box::new(RssFeed {
+            name: f.name.clone(),
+            url: f.url.clone(),
+            category: f.category.clone(),
+        }));
+    }
+
+    for s in &config.searches {
+        sources.push(Box::new(SearxngSearch {
+            name: s.name.clone(),
+            instance_url: s.instance_url.clone(),
+            query: s.query.clone(),
+            category: s.category.clone(),
+            time_range: s.time_range,
+        }));
+    }
 
     // 1. Collect items from all sources
     let mut total_fetched = 0usize;
@@ -35,11 +44,14 @@ pub async fn run(config: &Config, secrets: &Secrets) -> Result<()> {
             Ok(items) => {
                 let count = items.len();
                 total_fetched += count;
+
+                let items = filter_by_keywords(&config.keywords, items);
                 let new = store_items(&db, &items)?;
                 total_new += new;
                 info!(
                     source = source.name(),
                     fetched = count,
+                    kept = items.len(),
                     new = new,
                     "collected items"
                 );
@@ -87,6 +99,20 @@ pub async fn run(config: &Config, secrets: &Secrets) -> Result<()> {
     }
 
     Ok(())
+}
+
+fn filter_by_keywords(keywords: &Keywords, items: Vec<Item>) -> Vec<Item> {
+    if keywords.is_empty() {
+        return items;
+    }
+    items
+        .into_iter()
+        .filter(|item| {
+            let title_match = item.title.as_deref().is_some_and(|t| keywords.matches(t));
+            let content_match = item.content.as_deref().is_some_and(|c| keywords.matches(c));
+            title_match || content_match
+        })
+        .collect()
 }
 
 fn store_items(db: &Database, items: &[Item]) -> Result<usize> {

@@ -1,4 +1,5 @@
 pub mod rss;
+pub mod searxng;
 
 use std::future::Future;
 use std::pin::Pin;

@@ -1,12 +1,12 @@
 # Rustling
 
-A command-line digest agent that collects content from RSS feeds, summarizes it with an LLM, and delivers a digest via email.
+A command-line digest agent that collects content from RSS feeds and web searches, summarizes it with an LLM, and delivers a digest via email.
 
 Designed to run on a schedule (e.g. cron). Each run is idempotent — duplicate items are ignored and unsent digests are retried automatically.
 
 ## How it works
 
-1. **Collect** — Fetches items from configured RSS/Atom feeds
+1. **Collect** — Fetches items from configured RSS/Atom feeds and SearXNG searches
 2. **Store** — Saves items to a local SQLite database, deduplicating by URL
 3. **Summarize** — Sends new items to an LLM (Claude, Ollama, or any OpenAI-compatible endpoint) to generate a grouped digest
 4. **Deliver** — Emails the digest via SendGrid
@@ -42,6 +42,31 @@ name = "Rust Blog"
 url = "https://blog.rust-lang.org/feed.xml"
 category = "rust"
 ```
+
+#### SearXNG searches
+
+Query a [SearXNG](https://docs.searxng.org/) instance to collect web search results:
+
+```toml
+[[searches]]
+name = "Rust news"
+instance_url = "https://searxng.example.com"
+query = "rust programming language"
+category = "rust"
+time_range = "day"   # day (default), week, month, or year
+```
+
+Multiple searches can be configured. Each `[[searches]]` entry queries the given SearXNG instance and collects the results as digest items. The `time_range` parameter filters results to the specified recency.
+
+#### Keyword filtering
+
+Optionally filter collected items (from all sources) by keywords. Items whose title or content don't contain at least one keyword are dropped before storage:
+
+```toml
+keywords = "rust, kubernetes, llm, security"
+```
+
+If omitted, all items are kept.
 
 #### LLM provider
 
@@ -96,6 +121,7 @@ subject_prefix = "Rustling Digest"
 database_path = "rustling.db"   # SQLite database location
 lookback_hours = 24             # How far back to include items
 max_items_per_digest = 50       # Cap items sent to the LLM
+verbose = false                 # Enable debug-level logging
 ```
 
 ### Environment variables

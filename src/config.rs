@@ -4,13 +4,20 @@ use std::path::Path;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
+    #[serde(default)]
+    pub verbose: bool,
     #[serde(default = "default_database_path")]
     pub database_path: String,
     #[serde(default = "default_lookback_hours")]
     pub lookback_hours: u64,
     #[serde(default = "default_max_items")]
     pub max_items_per_digest: usize,
+    #[serde(default)]
+    pub keywords: Keywords,
+    #[serde(default)]
     pub feeds: Vec<FeedConfig>,
+    #[serde(default)]
+    pub searches: Vec<SearchConfig>,
     pub llm: LlmConfig,
     pub email: EmailConfig,
 }
@@ -20,6 +27,37 @@ pub struct FeedConfig {
     pub name: String,
     pub url: String,
     pub category: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SearchConfig {
+    pub name: String,
+    pub instance_url: String,
+    pub query: String,
+    pub category: Option<String>,
+    #[serde(default)]
+    pub time_range: TimeRange,
+}
+
+#[derive(Debug, Deserialize, Clone, Copy, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum TimeRange {
+    #[default]
+    Day,
+    Week,
+    Month,
+    Year,
+}
+
+impl TimeRange {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            TimeRange::Day => "day",
+            TimeRange::Week => "week",
+            TimeRange::Month => "month",
+            TimeRange::Year => "year",
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -43,6 +81,39 @@ pub struct EmailConfig {
     pub from: String,
     pub to: Vec<String>,
     pub subject_prefix: Option<String>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct Keywords(pub Vec<String>);
+
+impl Keywords {
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// Returns true if any keyword is found (case-insensitive) in the given text.
+    pub fn matches(&self, text: &str) -> bool {
+        if self.0.is_empty() {
+            return true;
+        }
+        let lower = text.to_lowercase();
+        self.0.iter().any(|kw| lower.contains(kw))
+    }
+}
+
+impl<'de> Deserialize<'de> for Keywords {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        let keywords = s
+            .split(',')
+            .map(|k| k.trim().to_lowercase())
+            .filter(|k| !k.is_empty())
+            .collect();
+        Ok(Keywords(keywords))
+    }
 }
 
 pub struct Secrets {

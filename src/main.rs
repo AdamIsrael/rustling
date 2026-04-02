@@ -16,19 +16,26 @@ use config::{Config, Secrets};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    tracing_subscriber::fmt()
-        .with_env_filter(EnvFilter::from_default_env().add_directive("rustling=info".parse()?))
-        .init();
-
     let config_path = std::env::args()
         .nth(1)
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("rustling.toml"));
 
-    info!(config = %config_path.display(), "loading configuration");
-
     let config = Config::load(&config_path)?;
-    let secrets = Secrets::from_env()?;
 
+    let default_directive = if config.verbose {
+        "rustling=debug"
+    } else {
+        "rustling=info"
+    };
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::from_default_env().add_directive(default_directive.parse()?),
+        )
+        .init();
+
+    info!(config = %config_path.display(), verbose = config.verbose, "loading configuration");
+
+    let secrets = Secrets::from_env()?;
     pipeline::run(&config, &secrets).await
 }
