@@ -65,3 +65,29 @@ category = "rust"
 # url = "http://localhost:8080/mcp"
 # [mcp_sources.tool_args]
 # topic = "technology"
+
+# Example: Search for Rust jobs on LinkedIn
+# [[mcp_sources]]
+# name = "search-jobs"
+# category = "jobs"
+# tool_name = "search_jobs"
+
+# [mcp_sources.transport]
+# type = "stdio"
+# command = "uvx"
+# args = ["linkedin-scraper-mcp@latest"]
+# env = { UV_HTTP_TIMEOUT = "300" }
+
+# [mcp_sources.tool_args]
+# keywords = "rust software engineer"
+# location = "Remote"
+# date_posted = "past_week"
+# work_type = "remote"
+# max_pages = 3
+
+# [mcp_sources.mapping]
+# strategy = "json_array"
+# results_path = "references.search_results"
+# url_prefix = "https://www.linkedin.com"
+# url_field = "url"
+# title_field = "text"

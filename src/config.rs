@@ -99,6 +99,8 @@ pub enum McpTransportConfig {
 pub struct McpMappingConfig {
     #[serde(default)]
     pub strategy: MappingStrategy,
+    pub results_path: Option<String>,
+    pub url_prefix: Option<String>,
     pub url_field: Option<String>,
     pub title_field: Option<String>,
     pub content_field: Option<String>,
@@ -109,6 +111,8 @@ impl Default for McpMappingConfig {
     fn default() -> Self {
         Self {
             strategy: MappingStrategy::default(),
+            results_path: None,
+            url_prefix: None,
             url_field: Some("url".to_string()),
             title_field: Some("title".to_string()),
             content_field: Some("content".to_string()),

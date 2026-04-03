@@ -131,19 +131,23 @@ fn map_response(
 
     match mapping.strategy {
         MappingStrategy::JsonArray => {
-            // Concatenate all text blocks and parse as JSON
             let combined: String = text_blocks.join("");
             let parsed: Value = serde_json::from_str(&combined)
                 .with_context(|| format!("MCP response is not valid JSON: {combined}"))?;
 
-            let arr = parsed
+            let target = resolve_path(&parsed, mapping.results_path.as_deref())?;
+
+            let arr = target
                 .as_array()
-                .with_context(|| "MCP response JSON is not an array")?;
+                .with_context(|| "MCP response target is not an array")?;
 
             let items = arr
                 .iter()
                 .filter_map(|obj| {
-                    let url = extract_field(obj, mapping.url_field.as_deref())?;
+                    let url = apply_prefix(
+                        extract_field(obj, mapping.url_field.as_deref())?,
+                        mapping.url_prefix.as_deref(),
+                    );
                     Some(Item {
                         id: None,
                         source_name: source_name.to_string(),
@@ -161,19 +165,24 @@ fn map_response(
         }
         MappingStrategy::SingleJson => {
             let combined: String = text_blocks.join("");
-            let obj: Value = serde_json::from_str(&combined)
+            let parsed: Value = serde_json::from_str(&combined)
                 .with_context(|| format!("MCP response is not valid JSON: {combined}"))?;
 
-            let url = extract_field(&obj, mapping.url_field.as_deref())
-                .with_context(|| "MCP single_json response missing url field")?;
+            let obj = resolve_path(&parsed, mapping.results_path.as_deref())?;
+
+            let url = apply_prefix(
+                extract_field(obj, mapping.url_field.as_deref())
+                    .with_context(|| "MCP single_json response missing url field")?,
+                mapping.url_prefix.as_deref(),
+            );
 
             Ok(vec![Item {
                 id: None,
                 source_name: source_name.to_string(),
                 source_type: "mcp".to_string(),
                 url,
-                title: extract_field(&obj, mapping.title_field.as_deref()),
-                content: extract_field(&obj, mapping.content_field.as_deref()),
+                title: extract_field(obj, mapping.title_field.as_deref()),
+                content: extract_field(obj, mapping.content_field.as_deref()),
                 published_at: None,
                 fetched_at: now,
                 category: category.clone(),
@@ -197,6 +206,27 @@ fn map_response(
                 .collect();
             Ok(items)
         }
+    }
+}
+
+/// Navigate into a nested JSON value using a dot-separated path (e.g. "references.search_results").
+fn resolve_path<'a>(value: &'a Value, path: Option<&str>) -> Result<&'a Value> {
+    let Some(path) = path else {
+        return Ok(value);
+    };
+    let mut current = value;
+    for segment in path.split('.') {
+        current = current
+            .get(segment)
+            .with_context(|| format!("path segment '{segment}' not found in MCP response"))?;
+    }
+    Ok(current)
+}
+
+fn apply_prefix(url: String, prefix: Option<&str>) -> String {
+    match prefix {
+        Some(p) => format!("{p}{url}"),
+        None => url,
     }
 }
 
