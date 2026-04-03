@@ -35,6 +35,13 @@ pub async fn run(config: &Config, secrets: &Secrets) -> Result<()> {
         }));
     }
 
+    #[cfg(feature = "mcp")]
+    for m in &config.mcp_sources {
+        sources.push(Box::new(crate::source::mcp::McpSource {
+            config: m.clone(),
+        }));
+    }
+
     // 1. Collect items from all sources
     let mut total_fetched = 0usize;
     let mut total_new = 0usize;

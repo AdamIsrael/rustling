@@ -1,5 +1,7 @@
 pub mod rss;
 pub mod searxng;
+#[cfg(feature = "mcp")]
+pub mod mcp;
 
 use std::future::Future;
 use std::pin::Pin;

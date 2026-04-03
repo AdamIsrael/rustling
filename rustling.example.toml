@@ -34,3 +34,34 @@ category = "tech"
 name = "Rust Blog"
 url = "https://blog.rust-lang.org/feed.xml"
 category = "rust"
+
+# MCP sources (requires building with --features mcp)
+# Stdio transport:
+# [[mcp_sources]]
+# name = "research-papers"
+# category = "research"
+# tool_name = "search_papers"
+# [mcp_sources.transport]
+# type = "stdio"
+# command = "/usr/local/bin/my-mcp-server"
+# args = ["--some-flag"]
+# env = { API_KEY = "secret" }
+# [mcp_sources.tool_args]
+# query = "rust async patterns"
+# limit = 10
+# [mcp_sources.mapping]
+# strategy = "json_array"
+# url_field = "url"
+# title_field = "title"
+# content_field = "content"
+
+# SSE/HTTP transport:
+# [[mcp_sources]]
+# name = "remote-source"
+# category = "news"
+# tool_name = "fetch_articles"
+# [mcp_sources.transport]
+# type = "sse"
+# url = "http://localhost:8080/mcp"
+# [mcp_sources.tool_args]
+# topic = "technology"

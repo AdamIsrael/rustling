@@ -1,6 +1,9 @@
+#[cfg(feature = "mcp")]
+use std::collections::HashMap;
+use std::path::Path;
+
 use anyhow::{Context, Result};
 use serde::Deserialize;
-use std::path::Path;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -18,6 +21,9 @@ pub struct Config {
     pub feeds: Vec<FeedConfig>,
     #[serde(default)]
     pub searches: Vec<SearchConfig>,
+    #[cfg(feature = "mcp")]
+    #[serde(default)]
+    pub mcp_sources: Vec<McpSourceConfig>,
     pub llm: LlmConfig,
     pub email: EmailConfig,
 }
@@ -58,6 +64,66 @@ impl TimeRange {
             TimeRange::Year => "year",
         }
     }
+}
+
+#[cfg(feature = "mcp")]
+#[derive(Debug, Clone, Deserialize)]
+pub struct McpSourceConfig {
+    pub name: String,
+    pub category: Option<String>,
+    pub transport: McpTransportConfig,
+    pub tool_name: String,
+    pub tool_args: Option<serde_json::Value>,
+    #[serde(default)]
+    pub mapping: McpMappingConfig,
+}
+
+#[cfg(feature = "mcp")]
+#[derive(Debug, Clone, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum McpTransportConfig {
+    Stdio {
+        command: String,
+        #[serde(default)]
+        args: Vec<String>,
+        #[serde(default)]
+        env: HashMap<String, String>,
+    },
+    Sse {
+        url: String,
+    },
+}
+
+#[cfg(feature = "mcp")]
+#[derive(Debug, Clone, Deserialize)]
+pub struct McpMappingConfig {
+    #[serde(default)]
+    pub strategy: MappingStrategy,
+    pub url_field: Option<String>,
+    pub title_field: Option<String>,
+    pub content_field: Option<String>,
+}
+
+#[cfg(feature = "mcp")]
+impl Default for McpMappingConfig {
+    fn default() -> Self {
+        Self {
+            strategy: MappingStrategy::default(),
+            url_field: Some("url".to_string()),
+            title_field: Some("title".to_string()),
+            content_field: Some("content".to_string()),
+        }
+    }
+}
+
+#[cfg(feature = "mcp")]
+#[derive(Debug, Deserialize, Default, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+pub enum MappingStrategy {
+    #[default]
+    JsonArray,
+    SingleJson,
+    TextBlock,
 }
 
 #[derive(Debug, Deserialize)]

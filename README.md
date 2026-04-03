@@ -6,7 +6,7 @@ Designed to run on a schedule (e.g. cron). Each run is idempotent — duplicate 
 
 ## How it works
 
-1. **Collect** — Fetches items from configured RSS/Atom feeds and SearXNG searches
+1. **Collect** — Fetches items from configured RSS/Atom feeds, SearXNG searches, and MCP servers
 2. **Store** — Saves items to a local SQLite database, deduplicating by URL
 3. **Summarize** — Sends new items to an LLM (Claude, Ollama, or any OpenAI-compatible endpoint) to generate a grouped digest
 4. **Deliver** — Emails the digest via SendGrid
@@ -17,6 +17,9 @@ Designed to run on a schedule (e.g. cron). Each run is idempotent — duplicate 
 
 ```sh
 cargo build --release
+
+# With MCP source support:
+cargo build --release --features mcp
 ```
 
 ### Configure
@@ -57,6 +60,61 @@ time_range = "day"   # day (default), week, month, or year
 ```
 
 Multiple searches can be configured. Each `[[searches]]` entry queries the given SearXNG instance and collects the results as digest items. The `time_range` parameter filters results to the specified recency.
+
+#### MCP sources
+
+Connect to any [Model Context Protocol](https://modelcontextprotocol.io/) server to fetch data by calling a tool. Requires building with `--features mcp`.
+
+**Stdio transport** (spawns a local subprocess):
+
+```toml
+[[mcp_sources]]
+name = "research-papers"
+category = "research"
+tool_name = "search_papers"
+
+[mcp_sources.transport]
+type = "stdio"
+command = "/usr/local/bin/my-mcp-server"
+args = ["--some-flag"]
+env = { API_KEY = "secret" }       # optional env vars for the child process
+
+[mcp_sources.tool_args]
+query = "rust async patterns"
+limit = 10
+
+[mcp_sources.mapping]
+strategy = "json_array"
+url_field = "url"
+title_field = "title"
+content_field = "content"
+```
+
+**SSE/HTTP transport** (connects to a remote server):
+
+```toml
+[[mcp_sources]]
+name = "remote-source"
+category = "news"
+tool_name = "fetch_articles"
+
+[mcp_sources.transport]
+type = "sse"
+url = "http://localhost:8080/mcp"
+
+[mcp_sources.tool_args]
+topic = "technology"
+```
+
+**Mapping strategies** control how the MCP tool's response is converted into digest items:
+
+| Strategy | Behavior |
+|---|---|
+| `json_array` (default) | Tool returns JSON text containing an array of objects. Fields are extracted by the configured `url_field`, `title_field`, and `content_field` keys. |
+| `single_json` | Tool returns a single JSON object. Produces one item. |
+| `text_block` | Each text content block in the response becomes one item (content only, no structured fields). |
+
+If `mapping` is omitted, it defaults to `json_array` with `url_field = "url"`, `title_field = "title"`, `content_field = "content"`.
 
 #### Keyword filtering
 
