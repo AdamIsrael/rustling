@@ -19,5 +19,6 @@ pub struct Digest {
     pub created_at: DateTime<Utc>,
     pub summary: String,
     pub item_count: usize,
+    #[allow(dead_code)]
     pub sent: bool,
 }

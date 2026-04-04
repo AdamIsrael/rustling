@@ -18,10 +18,7 @@ pub async fn summarize(
     api_key: Option<&str>,
     items: &[Item],
 ) -> Result<String> {
-    let prompt = config
-        .prompt_template
-        .as_deref()
-        .unwrap_or(DEFAULT_PROMPT);
+    let prompt = config.prompt_template.as_deref().unwrap_or(DEFAULT_PROMPT);
 
     let items_text = format_items_for_prompt(items);
 
@@ -42,7 +39,10 @@ fn format_items_for_prompt(items: &[Item]) -> String {
             buf.push_str(title);
         }
         buf.push('\n');
-        buf.push_str(&format!("   Source: {} | URL: {}\n", item.source_name, item.url));
+        buf.push_str(&format!(
+            "   Source: {} | URL: {}\n",
+            item.source_name, item.url
+        ));
         if let Some(category) = &item.category {
             buf.push_str(&format!("   Category: {category}\n"));
         }

@@ -70,8 +70,9 @@ impl SearxngSearch {
 
         debug!(status = %status, body_len = body.len(), body = %body, "SearXNG raw response");
 
-        let resp: SearxngResponse = serde_json::from_str(&body)
-            .with_context(|| format!("failed to parse SearXNG response (status {status}): {body}"))?;
+        let resp: SearxngResponse = serde_json::from_str(&body).with_context(|| {
+            format!("failed to parse SearXNG response (status {status}): {body}")
+        })?;
 
         let now = Utc::now();
         let items = resp

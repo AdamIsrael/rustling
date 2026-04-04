@@ -10,16 +10,17 @@ pub struct Database {
 
 impl Database {
     pub fn open(path: &str) -> Result<Self> {
-        let conn = Connection::open(path)
-            .with_context(|| format!("failed to open database: {path}"))?;
+        let conn =
+            Connection::open(path).with_context(|| format!("failed to open database: {path}"))?;
         let db = Self { conn };
         db.init_schema()?;
         Ok(db)
     }
 
     fn init_schema(&self) -> Result<()> {
-        self.conn.execute_batch(
-            "CREATE TABLE IF NOT EXISTS items (
+        self.conn
+            .execute_batch(
+                "CREATE TABLE IF NOT EXISTS items (
                 id INTEGER PRIMARY KEY,
                 source_name TEXT NOT NULL,
                 source_type TEXT NOT NULL,
@@ -44,8 +45,8 @@ impl Database {
                 item_id INTEGER NOT NULL REFERENCES items(id),
                 PRIMARY KEY (digest_id, item_id)
             );",
-        )
-        .with_context(|| "failed to initialize database schema")?;
+            )
+            .with_context(|| "failed to initialize database schema")?;
         Ok(())
     }
 
@@ -143,6 +144,7 @@ impl Database {
     }
 
     /// Get unsent digests (for retry).
+    #[allow(dead_code)]
     pub fn get_unsent_digests(&self) -> Result<Vec<Digest>> {
         let mut stmt = self.conn.prepare(
             "SELECT id, created_at, summary, item_count, sent FROM digests WHERE sent = 0",

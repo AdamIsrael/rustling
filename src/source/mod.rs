@@ -1,16 +1,17 @@
-pub mod rss;
-pub mod searxng;
 #[cfg(feature = "mcp")]
 pub mod mcp;
+pub mod rss;
+pub mod searxng;
 
 use std::future::Future;
 use std::pin::Pin;
 
-use anyhow::Result;
 use crate::models::Item;
+use anyhow::Result;
 
 pub trait Source: Send + Sync {
     fn name(&self) -> &str;
+    #[allow(dead_code)]
     fn source_type(&self) -> &str;
     fn fetch<'a>(
         &'a self,

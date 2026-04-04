@@ -1,5 +1,5 @@
 use anyhow::{Context, Result};
-use tracing::{info, warn, error};
+use tracing::{error, info, warn};
 
 use crate::config::{Config, Keywords, Secrets};
 use crate::db::Database;
@@ -80,14 +80,9 @@ pub async fn run(config: &Config, secrets: &Secrets) -> Result<()> {
     info!(count = items.len(), "items to summarize");
 
     // 3. Summarize via LLM
-    let summary = llm::summarize(
-        &client,
-        &config.llm,
-        secrets.llm_api_key.as_deref(),
-        &items,
-    )
-    .await
-    .context("LLM summarization failed")?;
+    let summary = llm::summarize(&client, &config.llm, secrets.llm_api_key.as_deref(), &items)
+        .await
+        .context("LLM summarization failed")?;
 
     let item_ids: Vec<i64> = items.iter().filter_map(|i| i.id).collect();
     let digest = db.insert_digest(&summary, &item_ids)?;

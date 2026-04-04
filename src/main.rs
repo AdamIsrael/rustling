@@ -29,9 +29,7 @@ async fn main() -> Result<()> {
         "rustling=info"
     };
     tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::from_default_env().add_directive(default_directive.parse()?),
-        )
+        .with_env_filter(EnvFilter::from_default_env().add_directive(default_directive.parse()?))
         .init();
 
     info!(config = %config_path.display(), verbose = config.verbose, "loading configuration");

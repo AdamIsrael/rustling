@@ -6,13 +6,13 @@ use anyhow::{Context, Result, bail};
 use chrono::Utc;
 use rmcp::ServiceExt;
 use rmcp::model::CallToolRequestParams;
-use rmcp::transport::TokioChildProcess;
 use rmcp::transport::StreamableHttpClientTransport;
+use rmcp::transport::TokioChildProcess;
 use serde_json::Value;
 use tokio::process::Command;
 use tracing::debug;
 
-use crate::config::{McpMappingConfig, McpSourceConfig, McpTransportConfig, MappingStrategy};
+use crate::config::{MappingStrategy, McpMappingConfig, McpSourceConfig, McpTransportConfig};
 use crate::models::Item;
 use crate::source::Source;
 
@@ -43,7 +43,12 @@ impl McpSource {
     async fn fetch_inner(&self) -> Result<Vec<Item>> {
         tokio::time::timeout(MCP_TIMEOUT, self.do_fetch())
             .await
-            .with_context(|| format!("MCP source '{}' timed out after {MCP_TIMEOUT:?}", self.config.name))?
+            .with_context(|| {
+                format!(
+                    "MCP source '{}' timed out after {MCP_TIMEOUT:?}",
+                    self.config.name
+                )
+            })?
     }
 
     async fn do_fetch(&self) -> Result<Vec<Item>> {
@@ -58,34 +63,38 @@ impl McpSource {
             .with_arguments(arguments.unwrap_or_default());
 
         // Connect and call tool based on transport type
-        let result = match &self.config.transport {
-            McpTransportConfig::Stdio { command, args, env } => {
-                let mut cmd = Command::new(command);
-                cmd.args(args);
-                for (k, v) in env {
-                    cmd.env(k, v);
+        let result =
+            match &self.config.transport {
+                McpTransportConfig::Stdio { command, args, env } => {
+                    let mut cmd = Command::new(command);
+                    cmd.args(args);
+                    for (k, v) in env {
+                        cmd.env(k, v);
+                    }
+                    let transport = TokioChildProcess::new(cmd)
+                        .with_context(|| format!("failed to spawn MCP server: {command}"))?;
+                    let client = ().serve(transport).await.with_context(|| {
+                        format!("failed to initialize MCP session with: {command}")
+                    })?;
+                    let result = client.call_tool(params).await.with_context(|| {
+                        format!("failed to call tool '{}'", self.config.tool_name)
+                    })?;
+                    client.cancel().await.ok();
+                    result
                 }
-                let transport = TokioChildProcess::new(cmd)
-                    .with_context(|| format!("failed to spawn MCP server: {command}"))?;
-                let client = ().serve(transport)
-                    .await
-                    .with_context(|| format!("failed to initialize MCP session with: {command}"))?;
-                let result = client.call_tool(params).await
-                    .with_context(|| format!("failed to call tool '{}'", self.config.tool_name))?;
-                client.cancel().await.ok();
-                result
-            }
-            McpTransportConfig::Sse { url } => {
-                let transport = StreamableHttpClientTransport::from_uri(url.as_str());
-                let client = ().serve(transport)
-                    .await
-                    .with_context(|| format!("failed to connect to MCP server at: {url}"))?;
-                let result = client.call_tool(params).await
-                    .with_context(|| format!("failed to call tool '{}'", self.config.tool_name))?;
-                client.cancel().await.ok();
-                result
-            }
-        };
+                McpTransportConfig::Sse { url } => {
+                    let transport = StreamableHttpClientTransport::from_uri(url.as_str());
+                    let client = ()
+                        .serve(transport)
+                        .await
+                        .with_context(|| format!("failed to connect to MCP server at: {url}"))?;
+                    let result = client.call_tool(params).await.with_context(|| {
+                        format!("failed to call tool '{}'", self.config.tool_name)
+                    })?;
+                    client.cancel().await.ok();
+                    result
+                }
+            };
 
         // Check for tool errors
         if result.is_error == Some(true) {
@@ -95,7 +104,10 @@ impl McpSource {
                 .filter_map(|c| c.raw.as_text().map(|t| t.text.clone()))
                 .collect::<Vec<_>>()
                 .join("\n");
-            bail!("MCP tool '{}' returned error: {error_text}", self.config.tool_name);
+            bail!(
+                "MCP tool '{}' returned error: {error_text}",
+                self.config.tool_name
+            );
         }
 
         // Extract text content from response
@@ -117,7 +129,12 @@ impl McpSource {
         }
 
         // Map response to items
-        map_response(&self.config.name, &self.config.category, &self.config.mapping, &text_blocks)
+        map_response(
+            &self.config.name,
+            &self.config.category,
+            &self.config.mapping,
+            &text_blocks,
+        )
     }
 }
 
