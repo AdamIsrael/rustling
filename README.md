@@ -6,10 +6,33 @@ Designed to run on a schedule (e.g. cron). Each run is idempotent — duplicate 
 
 ## How it works
 
+```mermaid
+flowchart LR
+    subgraph Sources
+        RSS[RSS/Atom Feeds]
+        SX[SearXNG Searches]
+        MCP[MCP Servers]
+    end
+
+    subgraph Pipeline
+        KW{Keyword Filter}
+        DB[(SQLite)]
+        LLM[LLM Summarizer]
+    end
+
+    RSS --> KW
+    SX --> KW
+    MCP --> KW
+    KW -- matched items --> DB
+    DB -- undigested items --> LLM
+    LLM -- HTML digest --> Email[SendGrid Email]
+```
+
 1. **Collect** — Fetches items from configured RSS/Atom feeds, SearXNG searches, and MCP servers
-2. **Store** — Saves items to a local SQLite database, deduplicating by URL
-3. **Summarize** — Sends new items to an LLM (Claude, Ollama, or any OpenAI-compatible endpoint) to generate a grouped digest
-4. **Deliver** — Emails the digest via SendGrid
+2. **Filter** — Drops items not matching configured keywords (if set)
+3. **Store** — Saves items to a local SQLite database, deduplicating by URL
+4. **Summarize** — Sends new items to an LLM (Claude, Ollama, or any OpenAI-compatible endpoint) to generate a grouped HTML digest
+5. **Deliver** — Emails the digest via SendGrid
 
 ## Setup
 
